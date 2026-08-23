@@ -13,10 +13,8 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Checkout Complete RakNet Source
-        uses: actions/checkout@v4
-        with:
-          repository: JonasSAMP/SAMP-Mobile
-          path: temp_samp
+        run: |
+          git clone --depth 1 https://github.com/JonasSAMP/SAMP-Mobile.git temp_samp || git clone --depth 1 https://github.com/samp-mobile/SAMP-Mobile.git temp_samp
 
       - name: Setup RakNet Files
         run: |
