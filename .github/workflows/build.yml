@@ -11,20 +11,36 @@ jobs:
     steps:
       - name: Checkout Current Repo
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
-      - name: Setup SAMP RakNet Legacy Source
+      - name: Setup SAMP RakNet Engine
+        env:
+          GIT_TERMINAL_PROMPT: "0"
         run: |
-          mkdir -p vendor
-
-          # استنسخ مكتبة RakNet الخاصة بـ SAMP مباشرة عبر Git
-          echo "Cloning SAMP Legacy RakNet..."
-          rm -rf vendor/RakNet
-          git clone --depth 1 https://github.com/vittorios/RakNet.git vendor/RakNet || \
-          git clone --depth 1 https://github.com/katysheva/RakNet.git vendor/RakNet
-
           mkdir -p vendor/RakNet/SAMP
 
-          # إنتاج ملفات الهيدر والتشفير المكملة لـ SAMP
+          # 1. سحب RakNet من مستودع أعم المتاح دائماً
+          if [ ! -f "vendor/RakNet/RakPeerInterface.h" ]; then
+            echo "Cloning RakNet base source..."
+            rm -rf temp_raknet
+            git clone --depth 1 https://github.com/facebookarchive/RakNet.git temp_raknet || true
+            if [ -d "temp_raknet/Source" ]; then
+              cp -r temp_raknet/Source/* vendor/RakNet/
+              rm -rf temp_raknet
+            fi
+          fi
+
+          # 2. إنشاء ملف RakClientInterface.h المتوافق مع SAMP
+          if [ ! -f "vendor/RakNet/RakClientInterface.h" ]; then
+            echo '#ifndef RAK_CLIENT_INTERFACE_H' > vendor/RakNet/RakClientInterface.h
+            echo '#define RAK_CLIENT_INTERFACE_H' >> vendor/RakNet/RakClientInterface.h
+            echo '#include "RakPeerInterface.h"' >> vendor/RakNet/RakClientInterface.h
+            echo 'typedef RakPeerInterface RakClientInterface;' >> vendor/RakNet/RakClientInterface.h
+            echo '#endif' >> vendor/RakNet/RakClientInterface.h
+          fi
+
+          # 3. توليد الهيدرات الخاصة بـ SAMP
           echo '#ifndef SAMP_NETENCR_H' > vendor/RakNet/SAMP/samp_netencr.h
           echo '#define SAMP_NETENCR_H' >> vendor/RakNet/SAMP/samp_netencr.h
           echo 'void Log(const char *fmt, ...);' >> vendor/RakNet/SAMP/samp_netencr.h
