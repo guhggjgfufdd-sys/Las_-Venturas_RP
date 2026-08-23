@@ -16,34 +16,36 @@ jobs:
         uses: actions/checkout@v4
 
       # ============================================
-      # ⬇️ الحل النهائي: تعديل الـ includes مباشرة
+      # ⬇️ الحل النهائي: إصلاح جميع الأخطاء
       # ============================================
-      - name: Fix All Case Sensitivity Issues
+      - name: Fix All Build Issues
         run: |
-          echo "=== BEFORE FIX ==="
-          ls -la *.h 2>/dev/null || echo "No .h in root"
-
-          # 1) Copy vendor/raknet → vendor/RakNet (Android.mk uses RakNet)
+          echo "=== 1) Fix vendor/RakNet ==="
           if [ -d "vendor/raknet" ] && [ ! -d "vendor/RakNet" ]; then
             cp -r vendor/raknet vendor/RakNet
             echo "✓ Copied vendor/raknet → vendor/RakNet"
           fi
 
-          # 2) Fix ALL local #include "Something.h" to lowercase in .cpp and .h files
-          # This only affects includes WITHOUT paths (e.g. "CheckFileHash.h" -> "checkfilehash.h")
-          # Includes with paths like "../vendor/RakNet/..." are NOT affected
+          echo "=== 2) Fix typo: str_obfuscator_ns_template.hpp → str_obfuscator_no_template.hpp ==="
           find . -name "*.cpp" -o -name "*.h" | while read f; do
-            # Skip vendor files (already correct)
-            if echo "$f" | grep -q "vendor/"; then
-              continue
-            fi
-            # Convert local includes to lowercase: #include "Something.h" -> #include "something.h"
-            sed -i 's/#include "\([A-Za-z0-9_]*\.h\)"/#include "\L\1"/g' "$f"
+            if echo "$f" | grep -q "vendor/"; then continue; fi
+            sed -i 's/str_obfuscator_ns_template/str_obfuscator_no_template/g' "$f"
           done
-          echo "✓ Fixed all local #include cases"
+          echo "✓ Fixed typo in customserver.cpp"
+
+          echo "=== 3) Fix Case Sensitivity in local #include ==="
+          find . -name "*.cpp" -o -name "*.h" | while read f; do
+            if echo "$f" | grep -q "vendor/"; then continue; fi
+            # Convert #include "Something.h" → #include "something.h"
+            sed -i 's/#include "\([A-Za-z0-9_]*\.h\)"/#include "\L\1"/g' "$f"
+            # Convert #include "Something.hpp" → #include "something.hpp"
+            sed -i 's/#include "\([A-Za-z0-9_]*\.hpp\)"/#include "\L\1"/g' "$f"
+          done
+          echo "✓ Fixed all local include cases"
 
           echo "=== VERIFY ==="
-          grep -r '#include "' . --include="*.cpp" | grep -v vendor | head -20
+          grep -r 'str_obfuscator' . --include="*.cpp" | grep -v vendor | head -5
+          grep -r '#include "' . --include="*.cpp" | grep -v vendor | head -10
 
       - name: Setup SAMP RakNet Engine
         run: |
