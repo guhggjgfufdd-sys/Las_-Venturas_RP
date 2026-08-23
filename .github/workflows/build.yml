@@ -1,0 +1,28 @@
+name: Build SAMP Native Engine
+
+on:
+  push:
+    branches: [ master, main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Android NDK
+        uses: niso/setup-ndk@v1
+        with:
+          ndk-version: r21e
+
+      - name: Compile NDK Libraries
+        run: |
+          $ANDROID_NDK_HOME/ndk-build
+
+      - name: Upload Compiled .so Files
+        uses: actions/upload-artifact@v4
+        with:
+          name: samp-compiled-libraries
+          path: libs/
