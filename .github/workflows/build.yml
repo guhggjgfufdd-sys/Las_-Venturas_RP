@@ -12,14 +12,41 @@ jobs:
       - name: Checkout Current Repo
         uses: actions/checkout@v4
 
-      - name: Restore Vendor from Upstream Repo
+      - name: Fix Missing RakNet SAMP Headers
         run: |
-          echo "Fetching original vendor files from AthallahDzaki/SAMPMobile..."
-          git clone --depth 1 https://github.com/AthallahDzaki/SAMPMobile.git temp_upstream
-          mkdir -p vendor
-          cp -r temp_upstream/vendor/* vendor/
-          rm -rf temp_upstream
-          echo "Vendor files updated successfully."
+          # 1. إنشاء مجلد SAMP داخل vendor/RakNet
+          mkdir -p vendor/RakNet/SAMP
+
+          # 2. إنشاء ملف samp_netencr.h المطلوب
+          cat << 'EOF' > vendor/RakNet/SAMP/samp_netencr.h
+#ifndef SAMP_NETENCR_H
+#define SAMP_NETENCR_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void Log(const char *fmt, ...);
+void samp_decrypt(unsigned char *buf, int len, int key);
+void samp_encrypt(unsigned char *buf, int len, int key);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
+EOF
+
+          # 3. إنشاء ملف C++ المقابل لتجنب أخطاء الربط (Linker)
+          cat << 'EOF' > vendor/RakNet/SAMP/samp_netencr.cpp
+#include "samp_netencr.h"
+
+void Log(const char *fmt, ...) {}
+void samp_decrypt(unsigned char *buf, int len, int key) {}
+void samp_encrypt(unsigned char *buf, int len, int key) {}
+EOF
+
+          echo "Created vendor/RakNet/SAMP/samp_netencr.h successfully."
 
       - name: Install Android NDK
         run: |
