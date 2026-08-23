@@ -16,45 +16,67 @@ jobs:
         uses: actions/checkout@v4
 
       # ============================================
-      # ⬇️ الحل النهائي: نسخ الملفات بأسماء CamelCase
+      # ⬇️ الحل النهائي: نسخ + تعديل Android.mk
       # ============================================
       - name: Fix All Case Sensitivity Issues
         run: |
-          python3 << 'EOF'
-          import os
-          import shutil
+          echo "=== BEFORE FIX ==="
+          ls -la *.h 2>/dev/null || echo "No .h in root"
+          ls -la vendor/ 2>/dev/null || echo "No vendor"
 
-          # 1) Fix vendor/raknet → vendor/RakNet
-          if os.path.isdir("vendor/raknet") and not os.path.exists("vendor/RakNet"):
-              shutil.copytree("vendor/raknet", "vendor/RakNet")
-              print("Copied: vendor/raknet → vendor/RakNet")
+          # 1) Copy vendor/raknet → vendor/RakNet
+          if [ -d "vendor/raknet" ] && [ ! -d "vendor/RakNet" ]; then
+            cp -r vendor/raknet vendor/RakNet
+            echo "✓ Copied vendor/raknet → vendor/RakNet"
+          fi
 
-          # 2) Fix all .h files: snake_case → CamelCase
-          for root, dirs, files in os.walk("."):
-              # Skip .git and hidden dirs
-              dirs[:] = [d for d in dirs if not d.startswith('.')]
-              for f in files:
-                  if f.endswith(".h"):
-                      # e.g. checkfilehash.h → Checkfilehash.h
-                      # e.g. check_file_hash.h → CheckFileHash.h
-                      name = f.replace(".h", "")
-                      parts = name.split("_")
-                      camel_name = "".join(p.capitalize() for p in parts) + ".h"
-                      if f != camel_name:
-                          src = os.path.join(root, f)
-                          dst = os.path.join(root, camel_name)
-                          if not os.path.exists(dst):
-                              shutil.copy2(src, dst)
-                              print(f"Copied: {src} → {dst}")
+          # 2) Copy all .h files with CamelCase names in root
+          for f in *.h; do
+            if [ -f "$f" ]; then
+              # checkfilehash.h → Checkfilehash.h
+              name="${f%.h}"
+              camel=$(echo "$name" | sed -r 's/(^|_)([a-z])/\U\2/g')
+              newname="${camel}.h"
+              if [ "$f" != "$newname" ] && [ ! -f "$newname" ]; then
+                cp "$f" "$newname"
+                echo "✓ Copied $f → $newname"
+              fi
+            fi
+          done
 
-          print("=== Done ===")
-          EOF
+          # 3) Also fix subdirectories (game, net, gui, util)
+          for dir in game net gui util; do
+            if [ -d "$dir" ]; then
+              for f in "$dir"/*.h; do
+                if [ -f "$f" ]; then
+                  name=$(basename "$f" .h)
+                  camel=$(echo "$name" | sed -r 's/(^|_)([a-z])/\U\2/g')
+                  newname="$dir/${camel}.h"
+                  if [ "$f" != "$newname" ] && [ ! -f "$newname" ]; then
+                    cp "$f" "$newname"
+                    echo "✓ Copied $f → $newname"
+                  fi
+                fi
+              done
+            fi
+          done
 
-          echo "=== Verifying vendor/RakNet ==="
-          ls -la vendor/ | grep -i raknet || true
-          
-          echo "=== Verifying root .h files ==="
+          echo "=== AFTER FIX ==="
           ls -la *.h 2>/dev/null || true
+          ls -la vendor/ 2>/dev/null || true
+
+      # ============================================
+      # ⬇️ تعديل Android.mk ليضيف مسارات الـ headers
+      # ============================================
+      - name: Fix Android.mk Include Paths
+        run: |
+          # Add LOCAL_C_INCLUDES if not present
+          if ! grep -q "LOCAL_C_INCLUDES" Android.mk; then
+            sed -i '/include $(BUILD_SHARED_LIBRARY)/i \
+          LOCAL_C_INCLUDES := $(LOCAL_PATH) $(LOCAL_PATH)/vendor/RakNet $(LOCAL_PATH)/vendor/raknet $(LOCAL_PATH)/game $(LOCAL_PATH)/net $(LOCAL_PATH)/gui $(LOCAL_PATH)/util' Android.mk
+            echo "✓ Added LOCAL_C_INCLUDES to Android.mk"
+          fi
+          cat Android.mk
 
       - name: Setup SAMP RakNet Engine
         run: |
