@@ -9,17 +9,21 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
+      - name: Checkout Current Repo
         uses: actions/checkout@v4
 
-      - name: Setup RakNet Vendor Files
+      - name: Checkout RakNet Source
+        uses: actions/checkout@v4
+        with:
+          repository: AthallahDzaki/SAMPMobile
+          path: temp_samp
+
+      - name: Setup RakNet Files
         run: |
           rm -rf vendor/RakNet
           mkdir -p vendor/RakNet
-          wget https://codeload.github.com/facebook/raknet/zip/refs/heads/main -O raknet.zip
-          unzip -q raknet.zip
-          cp -r raknet-main/* vendor/RakNet/
-          rm -rf raknet.zip raknet-main
+          cp -r temp_samp/vendor/RakNet/* vendor/RakNet/
+          rm -rf temp_samp
 
       - name: Install Android NDK
         run: |
