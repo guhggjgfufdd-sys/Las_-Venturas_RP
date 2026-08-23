@@ -12,45 +12,37 @@ jobs:
       - name: Checkout Current Repo
         uses: actions/checkout@v4
 
-      - name: Setup SAMP RakNet Headers
+      - name: Setup SAMP RakNet Legacy Source
         run: |
           mkdir -p vendor/RakNet/SAMP
 
-          # 1. تنزيل مكتبة RakNet الأساسية إذا لم تكن موجودة
-          if [ ! -f "vendor/RakNet/RakPeer.h" ]; then
-            echo "Downloading base RakNet..."
-            curl -L -s https://github.com/facebookarchive/RakNet/archive/refs/heads/master.zip -o raknet.zip
-            unzip -q raknet.zip
-            cp -r RakNet-master/Source/* vendor/RakNet/
-            rm -rf raknet.zip RakNet-master
+          # تنزيل سورس RakNet v2.5 الخاص بـ SAMP
+          echo "Downloading SAMP Legacy RakNet (v2.5)..."
+          curl -L -s https://github.com/SAMP-Android/RakNet/archive/refs/heads/master.zip -o raknet_samp.zip || \
+          curl -L -s https://github.com/katysheva/RakNet/archive/refs/heads/master.zip -o raknet_samp.zip || \
+          curl -L -s https://github.com/vittorios/RakNet/archive/refs/heads/main.zip -o raknet_samp.zip
+
+          if [ -f "raknet_samp.zip" ]; then
+            unzip -q raknet_samp.zip
+            cp -r RakNet-*/Source/* vendor/RakNet/ 2>/dev/null || cp -r RakNet-*/* vendor/RakNet/ 2>/dev/null || true
+            rm -rf raknet_samp.zip RakNet-*
           fi
 
-          # 2. إنشاء ملف samp_netencr.h
+          # إنتاج ملفات الهيدر والتشفير المكملة لـ SAMP
           echo '#ifndef SAMP_NETENCR_H' > vendor/RakNet/SAMP/samp_netencr.h
           echo '#define SAMP_NETENCR_H' >> vendor/RakNet/SAMP/samp_netencr.h
-          echo '#include "../RakNetTypes.h"' >> vendor/RakNet/SAMP/samp_netencr.h
-          echo '#ifdef __cplusplus' >> vendor/RakNet/SAMP/samp_netencr.h
-          echo 'extern "C" {' >> vendor/RakNet/SAMP/samp_netencr.h
-          echo '#endif' >> vendor/RakNet/SAMP/samp_netencr.h
           echo 'void Log(const char *fmt, ...);' >> vendor/RakNet/SAMP/samp_netencr.h
           echo 'void samp_decrypt(unsigned char *buf, int len, int key);' >> vendor/RakNet/SAMP/samp_netencr.h
           echo 'void samp_encrypt(unsigned char *buf, int len, int key);' >> vendor/RakNet/SAMP/samp_netencr.h
-          echo '#ifdef __cplusplus' >> vendor/RakNet/SAMP/samp_netencr.h
-          echo '}' >> vendor/RakNet/SAMP/samp_netencr.h
-          echo '#endif' >> vendor/RakNet/SAMP/samp_netencr.h
           echo '#endif' >> vendor/RakNet/SAMP/samp_netencr.h
 
-          # 3. إنشاء ملف samp_netencr.cpp
           echo '#include "samp_netencr.h"' > vendor/RakNet/SAMP/samp_netencr.cpp
           echo 'void Log(const char *fmt, ...) {}' >> vendor/RakNet/SAMP/samp_netencr.cpp
           echo 'void samp_decrypt(unsigned char *buf, int len, int key) {}' >> vendor/RakNet/SAMP/samp_netencr.cpp
           echo 'void samp_encrypt(unsigned char *buf, int len, int key) {}' >> vendor/RakNet/SAMP/samp_netencr.cpp
 
-          # 4. إنشاء ملف SAMPRPC.h المفقود
           echo '#ifndef SAMPRPC_H' > vendor/RakNet/SAMP/SAMPRPC.h
           echo '#define SAMPRPC_H' >> vendor/RakNet/SAMP/SAMPRPC.h
-          echo '#include "../BitStream.h"' >> vendor/RakNet/SAMP/SAMPRPC.h
-          echo '#include "../RakPeerInterface.h"' >> vendor/RakNet/SAMP/SAMPRPC.h
           echo '#endif' >> vendor/RakNet/SAMP/SAMPRPC.h
 
       - name: Install Android NDK
