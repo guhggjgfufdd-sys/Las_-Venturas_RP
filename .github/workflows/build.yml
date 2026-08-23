@@ -12,12 +12,14 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Fetch Missing RakNet Files
+      - name: Download & Extract RakNet
         run: |
           rm -rf vendor/RakNet
-          git clone --depth 1 https://github.com/JonasSAMP/SAMP-Mobile.git temp_repo
-          cp -r temp_repo/vendor/RakNet vendor/
-          rm -rf temp_repo
+          mkdir -p vendor/RakNet
+          curl -L https://github.com/AthallahDzaki/SAMPMobile/archive/refs/heads/master.zip -o repo.zip
+          unzip -q repo.zip
+          cp -r SAMPMobile-master/vendor/RakNet/* vendor/RakNet/
+          rm -rf repo.zip SAMPMobile-master
 
       - name: Install Android NDK
         run: |
