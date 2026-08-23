@@ -12,10 +12,10 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Android NDK
-        uses: niso/setup-ndk@v1
-        with:
-          ndk-version: r21e
+      - name: Install Android NDK
+        run: |
+          sudo $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "ndk;21.4.7075529"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/21.4.7075529" >> $GITHUB_ENV
 
       - name: Compile NDK Libraries
         run: |
