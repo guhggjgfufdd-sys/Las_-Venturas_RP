@@ -12,41 +12,21 @@ jobs:
       - name: Checkout Current Repo
         uses: actions/checkout@v4
 
-      - name: Fix Missing RakNet SAMP Headers
+      - name: Setup SAMP RakNet Headers
         run: |
-          # 1. إنشاء مجلد SAMP داخل vendor/RakNet
           mkdir -p vendor/RakNet/SAMP
+          
+          echo '#ifndef SAMP_NETENCR_H' > vendor/RakNet/SAMP/samp_netencr.h
+          echo '#define SAMP_NETENCR_H' >> vendor/RakNet/SAMP/samp_netencr.h
+          echo 'void Log(const char *fmt, ...);' >> vendor/RakNet/SAMP/samp_netencr.h
+          echo 'void samp_decrypt(unsigned char *buf, int len, int key);' >> vendor/RakNet/SAMP/samp_netencr.h
+          echo 'void samp_encrypt(unsigned char *buf, int len, int key);' >> vendor/RakNet/SAMP/samp_netencr.h
+          echo '#endif' >> vendor/RakNet/SAMP/samp_netencr.h
 
-          # 2. إنشاء ملف samp_netencr.h المطلوب
-          cat << 'EOF' > vendor/RakNet/SAMP/samp_netencr.h
-#ifndef SAMP_NETENCR_H
-#define SAMP_NETENCR_H
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-void Log(const char *fmt, ...);
-void samp_decrypt(unsigned char *buf, int len, int key);
-void samp_encrypt(unsigned char *buf, int len, int key);
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif
-EOF
-
-          # 3. إنشاء ملف C++ المقابل لتجنب أخطاء الربط (Linker)
-          cat << 'EOF' > vendor/RakNet/SAMP/samp_netencr.cpp
-#include "samp_netencr.h"
-
-void Log(const char *fmt, ...) {}
-void samp_decrypt(unsigned char *buf, int len, int key) {}
-void samp_encrypt(unsigned char *buf, int len, int key) {}
-EOF
-
-          echo "Created vendor/RakNet/SAMP/samp_netencr.h successfully."
+          echo '#include "samp_netencr.h"' > vendor/RakNet/SAMP/samp_netencr.cpp
+          echo 'void Log(const char *fmt, ...) {}' >> vendor/RakNet/SAMP/samp_netencr.cpp
+          echo 'void samp_decrypt(unsigned char *buf, int len, int key) {}' >> vendor/RakNet/SAMP/samp_netencr.cpp
+          echo 'void samp_encrypt(unsigned char *buf, int len, int key) {}' >> vendor/RakNet/SAMP/samp_netencr.cpp
 
       - name: Install Android NDK
         run: |
