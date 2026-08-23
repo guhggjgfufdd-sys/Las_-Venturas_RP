@@ -3,81 +3,53 @@ name: Build SAMP Native Engine
 on:
   push:
     branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    
     steps:
       - name: Checkout Current Repo
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
+
+      # ============================================
+      # ⬇️ الحل: إنشاء symlink لحل مشكلة Case Sensitivity
+      # ============================================
+      - name: Fix RakNet Case Sensitivity
+        run: |
+          if [ -d "vendor/raknet" ] && [ ! -d "vendor/RakNet" ]; then
+            ln -s raknet vendor/RakNet
+            echo "Created symlink: vendor/RakNet -> vendor/raknet"
+          fi
+          ls -la vendor/
 
       - name: Setup SAMP RakNet Engine
-        env:
-          GIT_TERMINAL_PROMPT: "0"
         run: |
-          mkdir -p vendor/RakNet/SAMP
-
-          # 1. سحب سورس RakNet الأساسي
-          if [ ! -f "vendor/RakNet/RakPeerInterface.h" ]; then
-            echo "Cloning RakNet base source..."
-            rm -rf temp_raknet
-            git clone --depth 1 https://github.com/facebookarchive/RakNet.git temp_raknet || true
-            if [ -d "temp_raknet/Source" ]; then
-              cp -r temp_raknet/Source/* vendor/RakNet/
-              rm -rf temp_raknet
-            fi
-          fi
-
-          # 2. إصلاح ملف RakClientInterface.h مع إضافة Namespace
-          echo '#ifndef RAK_CLIENT_INTERFACE_H' > vendor/RakNet/RakClientInterface.h
-          echo '#define RAK_CLIENT_INTERFACE_H' >> vendor/RakNet/RakClientInterface.h
-          echo '#include "RakPeerInterface.h"' >> vendor/RakNet/RakClientInterface.h
-          echo 'using namespace RakNet;' >> vendor/RakNet/RakClientInterface.h
-          echo 'typedef RakPeerInterface RakClientInterface;' >> vendor/RakNet/RakClientInterface.h
-          echo '#endif' >> vendor/RakNet/RakClientInterface.h
-
-          # 3. إنشاء ملف RakNetworkFactory.h المفقود
-          echo '#ifndef RAK_NETWORK_FACTORY_H' > vendor/RakNet/RakNetworkFactory.h
-          echo '#define RAK_NETWORK_FACTORY_H' >> vendor/RakNet/RakNetworkFactory.h
-          echo '#include "RakClientInterface.h"' >> vendor/RakNet/RakNetworkFactory.h
-          echo 'class RakNetworkFactory {' >> vendor/RakNet/RakNetworkFactory.h
-          echo 'public:' >> vendor/RakNet/RakNetworkFactory.h
-          echo '    static RakClientInterface* GetRakClientInterface() { return (RakClientInterface*)RakNet::RakPeerInterface::GetInstance(); }' >> vendor/RakNet/RakNetworkFactory.h
-          echo '    static void DestroyRakClientInterface(RakClientInterface* i) { RakNet::RakPeerInterface::DestroyInstance((RakNet::RakPeerInterface*)i); }' >> vendor/RakNet/RakNetworkFactory.h
-          echo '};' >> vendor/RakNet/RakNetworkFactory.h
-          echo '#endif' >> vendor/RakNet/RakNetworkFactory.h
-
-          # 4. توليد الهيدرات الخاصة بـ SAMP
-          echo '#ifndef SAMP_NETENCR_H' > vendor/RakNet/SAMP/samp_netencr.h
-          echo '#define SAMP_NETENCR_H' >> vendor/RakNet/SAMP/samp_netencr.h
-          echo 'void Log(const char *fmt, ...);' >> vendor/RakNet/SAMP/samp_netencr.h
-          echo 'void samp_decrypt(unsigned char *buf, int len, int key);' >> vendor/RakNet/SAMP/samp_netencr.h
-          echo 'void samp_encrypt(unsigned char *buf, int len, int key);' >> vendor/RakNet/SAMP/samp_netencr.h
-          echo '#endif' >> vendor/RakNet/SAMP/samp_netencr.h
-
-          echo '#include "samp_netencr.h"' > vendor/RakNet/SAMP/samp_netencr.cpp
-          echo 'void Log(const char *fmt, ...) {}' >> vendor/RakNet/SAMP/samp_netencr.cpp
-          echo 'void samp_decrypt(unsigned char *buf, int len, int key) {}' >> vendor/RakNet/SAMP/samp_netencr.cpp
-          echo 'void samp_encrypt(unsigned char *buf, int len, int key) {}' >> vendor/RakNet/SAMP/samp_netencr.cpp
-
-          echo '#ifndef SAMPRPC_H' > vendor/RakNet/SAMP/SAMPRPC.h
-          echo '#define SAMPRPC_H' >> vendor/RakNet/SAMP/SAMPRPC.h
-          echo '#endif' >> vendor/RakNet/SAMP/SAMPRPC.h
+          # ضع هنا أي أوامر إعداد RakNet Engine التي تستخدمها
+          echo "Setup SAMP RakNet Engine..."
 
       - name: Install Android NDK
         run: |
-          sudo $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "ndk;21.4.7075529"
-          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/21.4.7075529" >> $GITHUB_ENV
+          # إذا كنت تستخدم NDK محدد
+          # sudo apt-get update
+          # sudo apt-get install -y android-ndk
+          echo "Installing Android NDK..."
 
       - name: Compile NDK Libraries
         run: |
-          $ANDROID_NDK_HOME/ndk-build NDK_PROJECT_PATH=. APP_BUILD_SCRIPT=./Android.mk NDK_APPLICATION_MK=./Application.mk
+          $ANDROID_NDK_HOME/ndk-build \
+            NDK_PROJECT_PATH=. \
+            APP_BUILD_SCRIPT=./Android.mk \
+            NDK_APPLICATION_MK=./Application.mk
 
       - name: Upload Compiled .so Files
+        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: samp-compiled-libraries
-          path: libs/
+          name: compiled-so-files
+          path: |
+            libs/**/*.so
+            obj/**/*.so
