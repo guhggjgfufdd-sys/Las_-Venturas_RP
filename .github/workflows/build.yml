@@ -9,10 +9,15 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code with Submodules
+      - name: Checkout Code
         uses: actions/checkout@v4
-        with:
-          submodules: recursive
+
+      - name: Fetch Missing RakNet Files
+        run: |
+          rm -rf vendor/RakNet
+          git clone --depth 1 https://github.com/JonasSAMP/SAMP-Mobile.git temp_repo
+          cp -r temp_repo/vendor/RakNet vendor/
+          rm -rf temp_repo
 
       - name: Install Android NDK
         run: |
