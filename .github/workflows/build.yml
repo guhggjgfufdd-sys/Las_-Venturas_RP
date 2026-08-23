@@ -13,20 +13,18 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Checkout Complete RakNet Source
-        env:
-          GIT_TERMINAL_PROMPT: 0
         run: |
-          git clone --depth 1 https://github.com/OtxOpenSource/RakNet.git temp_samp || \
-          git clone --depth 1 https://github.com/facebook/RakNet.git temp_samp
+          git clone --depth 1 https://github.com/facebookarchive/RakNet.git temp_samp || \
+          git clone --depth 1 https://github.com/SLMP-Team/RakNet.git temp_samp
 
       - name: Setup RakNet Files
         run: |
           rm -rf vendor/RakNet
           mkdir -p vendor/RakNet
-          if [ -d "temp_samp/vendor/RakNet" ]; then
-            cp -r temp_samp/vendor/RakNet/* vendor/RakNet/
-          elif [ -d "temp_samp/Source" ]; then
+          if [ -d "temp_samp/Source" ]; then
             cp -r temp_samp/Source/* vendor/RakNet/
+          elif [ -d "temp_samp/vendor/RakNet" ]; then
+            cp -r temp_samp/vendor/RakNet/* vendor/RakNet/
           else
             cp -r temp_samp/* vendor/RakNet/
           fi
