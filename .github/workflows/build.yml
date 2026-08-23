@@ -14,19 +14,15 @@ jobs:
 
       - name: Setup SAMP RakNet Legacy Source
         run: |
+          mkdir -p vendor
+
+          # استنسخ مكتبة RakNet الخاصة بـ SAMP مباشرة عبر Git
+          echo "Cloning SAMP Legacy RakNet..."
+          rm -rf vendor/RakNet
+          git clone --depth 1 https://github.com/vittorios/RakNet.git vendor/RakNet || \
+          git clone --depth 1 https://github.com/katysheva/RakNet.git vendor/RakNet
+
           mkdir -p vendor/RakNet/SAMP
-
-          # تنزيل سورس RakNet v2.5 الخاص بـ SAMP
-          echo "Downloading SAMP Legacy RakNet (v2.5)..."
-          curl -L -s https://github.com/SAMP-Android/RakNet/archive/refs/heads/master.zip -o raknet_samp.zip || \
-          curl -L -s https://github.com/katysheva/RakNet/archive/refs/heads/master.zip -o raknet_samp.zip || \
-          curl -L -s https://github.com/vittorios/RakNet/archive/refs/heads/main.zip -o raknet_samp.zip
-
-          if [ -f "raknet_samp.zip" ]; then
-            unzip -q raknet_samp.zip
-            cp -r RakNet-*/Source/* vendor/RakNet/ 2>/dev/null || cp -r RakNet-*/* vendor/RakNet/ 2>/dev/null || true
-            rm -rf raknet_samp.zip RakNet-*
-          fi
 
           # إنتاج ملفات الهيدر والتشفير المكملة لـ SAMP
           echo '#ifndef SAMP_NETENCR_H' > vendor/RakNet/SAMP/samp_netencr.h
