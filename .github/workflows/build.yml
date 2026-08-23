@@ -15,18 +15,46 @@ jobs:
       - name: Setup SAMP RakNet Source
         run: |
           if [ -f "vendor/RakNet/SAMP/samp_netencr.h" ]; then
-            echo "SAMP RakNet already exists in repository."
-          else
-            echo "SAMP RakNet not found, downloading SAMP RakNet source..."
-            git clone --depth 1 https://github.com/vittorios/RakNet.git temp_samp || \
-            git clone --depth 1 https://github.com/unisamp/RakNet.git temp_samp || \
-            git clone --depth 1 https://github.com/Bartek35/RakNet.git temp_samp
-            
-            rm -rf vendor/RakNet
-            mkdir -p vendor/RakNet
-            cp -r temp_samp/* vendor/RakNet/
-            rm -rf temp_samp
+            echo "SAMP RakNet file already exists in repository."
+            exit 0
           fi
+
+          echo "SAMP RakNet not found. Trying public sources..."
+
+          URLS=(
+            "https://github.com/SAMP-Android/RakNet.git"
+            "https://github.com/katysheva/SAMP-Mobile.git"
+            "https://github.com/Open-SAMP/RakNet.git"
+            "https://github.com/vittorios/SAMP-Mobile.git"
+          )
+
+          CLONED=0
+          for url in "${URLS[@]}"; do
+            echo "Attempting to clone: $url"
+            if GIT_TERMINAL_PROMPT=0 git -c credential.helper= clone --depth 1 "$url" temp_samp 2>/dev/null; then
+              echo "Successfully cloned from $url"
+              CLONED=1
+              break
+            fi
+          done
+
+          if [ $CLONED -eq 0 ]; then
+            echo "Error: Failed to fetch RakNet from available public sources."
+            exit 1
+          fi
+
+          rm -rf vendor/RakNet
+          mkdir -p vendor/RakNet
+
+          if [ -d "temp_samp/vendor/RakNet" ]; then
+            cp -r temp_samp/vendor/RakNet/* vendor/RakNet/
+          elif [ -d "temp_samp/Source" ]; then
+            cp -r temp_samp/Source/* vendor/RakNet/
+          else
+            cp -r temp_samp/* vendor/RakNet/
+          fi
+
+          rm -rf temp_samp
 
       - name: Install Android NDK
         run: |
