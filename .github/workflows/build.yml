@@ -12,10 +12,10 @@ jobs:
       - name: Checkout Current Repo
         uses: actions/checkout@v4
 
-      - name: Checkout RakNet Source
+      - name: Checkout Complete RakNet Source
         uses: actions/checkout@v4
         with:
-          repository: AthallahDzaki/SAMPMobile
+          repository: JonasSAMP/SAMP-Mobile
           path: temp_samp
 
       - name: Setup RakNet Files
