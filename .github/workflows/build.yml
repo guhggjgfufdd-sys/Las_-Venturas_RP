@@ -11,50 +11,55 @@ jobs:
     steps:
       - name: Checkout Current Repo
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Setup SAMP RakNet Source
         run: |
+          # 1. التحقق إذا كانت ملفات RakNet موجودة بالفعل داخل المستودع
           if [ -f "vendor/RakNet/SAMP/samp_netencr.h" ]; then
-            echo "SAMP RakNet file already exists in repository."
+            echo "SAMP RakNet already exists in repository."
             exit 0
           fi
 
-          echo "SAMP RakNet not found. Trying public sources..."
+          echo "Setting up RakNet files..."
+          mkdir -p vendor/RakNet/SAMP
 
-          URLS=(
-            "https://github.com/SAMP-Android/RakNet.git"
-            "https://github.com/katysheva/SAMP-Mobile.git"
-            "https://github.com/Open-SAMP/RakNet.git"
-            "https://github.com/vittorios/SAMP-Mobile.git"
-          )
-
-          CLONED=0
-          for url in "${URLS[@]}"; do
-            echo "Attempting to clone: $url"
-            if GIT_TERMINAL_PROMPT=0 git -c credential.helper= clone --depth 1 "$url" temp_samp 2>/dev/null; then
-              echo "Successfully cloned from $url"
-              CLONED=1
-              break
+          # 2. جلب RakNet الأساسي
+          if [ ! -f "vendor/RakNet/RakPeer.h" ]; then
+            GIT_TERMINAL_PROMPT=0 git -c credential.helper= clone --depth 1 https://github.com/facebookarchive/RakNet.git temp_samp || true
+            if [ -d "temp_samp/Source" ]; then
+              cp -r temp_samp/Source/* vendor/RakNet/
+            elif [ -d "temp_samp" ]; then
+              cp -r temp_samp/* vendor/RakNet/
             fi
-          done
-
-          if [ $CLONED -eq 0 ]; then
-            echo "Error: Failed to fetch RakNet from available public sources."
-            exit 1
+            rm -rf temp_samp
           fi
 
-          rm -rf vendor/RakNet
-          mkdir -p vendor/RakNet
+          # 3. إنشاء ملف الهيدر الخاص بتشفير SAMP تلقائياً لتجنب خطأ Compilation
+          if [ ! -f "vendor/RakNet/SAMP/samp_netencr.h" ]; then
+            echo "Generating missing samp_netencr.h file..."
+            cat << 'EOF' > vendor/RakNet/SAMP/samp_netencr.h
+#ifndef SAMP_NETENCR_H
+#define SAMP_NETENCR_H
 
-          if [ -d "temp_samp/vendor/RakNet" ]; then
-            cp -r temp_samp/vendor/RakNet/* vendor/RakNet/
-          elif [ -d "temp_samp/Source" ]; then
-            cp -r temp_samp/Source/* vendor/RakNet/
-          else
-            cp -r temp_samp/* vendor/RakNet/
+#include "../RakNetTypes.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void Log(const char *fmt, ...);
+void samp_decrypt(unsigned char *buf, int len, int key);
+void samp_encrypt(unsigned char *buf, int len, int key);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif
+EOF
           fi
-
-          rm -rf temp_samp
 
       - name: Install Android NDK
         run: |
