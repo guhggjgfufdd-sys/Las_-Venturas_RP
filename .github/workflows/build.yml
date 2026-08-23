@@ -12,10 +12,14 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Clone RakNet Source
+      - name: Setup RakNet Vendor Files
         run: |
           rm -rf vendor/RakNet
-          git clone --depth 1 https://github.com/facebook/raknet.git vendor/RakNet
+          mkdir -p vendor/RakNet
+          wget https://codeload.github.com/facebook/raknet/zip/refs/heads/main -O raknet.zip
+          unzip -q raknet.zip
+          cp -r raknet-main/* vendor/RakNet/
+          rm -rf raknet.zip raknet-main
 
       - name: Install Android NDK
         run: |
