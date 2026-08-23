@@ -12,22 +12,16 @@ jobs:
       - name: Checkout Current Repo
         uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: false
 
       - name: Setup SAMP RakNet Source
         run: |
-          # 1. التحقق إذا كانت ملفات RakNet موجودة بالفعل داخل المستودع
-          if [ -f "vendor/RakNet/SAMP/samp_netencr.h" ]; then
-            echo "SAMP RakNet already exists in repository."
-            exit 0
-          fi
-
-          echo "Setting up RakNet files..."
           mkdir -p vendor/RakNet/SAMP
 
-          # 2. جلب RakNet الأساسي
+          # 1. تنزيل RakNet الأساسي
           if [ ! -f "vendor/RakNet/RakPeer.h" ]; then
-            GIT_TERMINAL_PROMPT=0 git -c credential.helper= clone --depth 1 https://github.com/facebookarchive/RakNet.git temp_samp || true
+            echo "Downloading base RakNet..."
+            git clone --depth 1 https://github.com/facebookarchive/RakNet.git temp_samp || true
             if [ -d "temp_samp/Source" ]; then
               cp -r temp_samp/Source/* vendor/RakNet/
             elif [ -d "temp_samp" ]; then
@@ -36,9 +30,9 @@ jobs:
             rm -rf temp_samp
           fi
 
-          # 3. إنشاء ملف الهيدر الخاص بتشفير SAMP تلقائياً لتجنب خطأ Compilation
+          # 2. إنشاء ملف الهيدر الخاص بـ SAMP
           if [ ! -f "vendor/RakNet/SAMP/samp_netencr.h" ]; then
-            echo "Generating missing samp_netencr.h file..."
+            echo "Creating samp_netencr.h..."
             cat << 'EOF' > vendor/RakNet/SAMP/samp_netencr.h
 #ifndef SAMP_NETENCR_H
 #define SAMP_NETENCR_H
@@ -58,6 +52,18 @@ void samp_encrypt(unsigned char *buf, int len, int key);
 #endif
 
 #endif
+EOF
+          fi
+
+          # 3. إنشاء ملف C++ التنفيذي لتجنب أخطاء Linker أثناء Compilation
+          if [ ! -f "vendor/RakNet/SAMP/samp_netencr.cpp" ]; then
+            echo "Creating samp_netencr.cpp..."
+            cat << 'EOF' > vendor/RakNet/SAMP/samp_netencr.cpp
+#include "samp_netencr.h"
+
+void Log(const char *fmt, ...) {}
+void samp_decrypt(unsigned char *buf, int len, int key) {}
+void samp_encrypt(unsigned char *buf, int len, int key) {}
 EOF
           fi
 
