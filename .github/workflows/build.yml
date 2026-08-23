@@ -12,23 +12,21 @@ jobs:
       - name: Checkout Current Repo
         uses: actions/checkout@v4
 
-      - name: Checkout Complete RakNet Source
+      - name: Setup SAMP RakNet Source
         run: |
-          git clone --depth 1 https://github.com/facebookarchive/RakNet.git temp_samp || \
-          git clone --depth 1 https://github.com/SLMP-Team/RakNet.git temp_samp
-
-      - name: Setup RakNet Files
-        run: |
-          rm -rf vendor/RakNet
-          mkdir -p vendor/RakNet
-          if [ -d "temp_samp/Source" ]; then
-            cp -r temp_samp/Source/* vendor/RakNet/
-          elif [ -d "temp_samp/vendor/RakNet" ]; then
-            cp -r temp_samp/vendor/RakNet/* vendor/RakNet/
+          if [ -f "vendor/RakNet/SAMP/samp_netencr.h" ]; then
+            echo "SAMP RakNet already exists in repository."
           else
+            echo "SAMP RakNet not found, downloading SAMP RakNet source..."
+            git clone --depth 1 https://github.com/vittorios/RakNet.git temp_samp || \
+            git clone --depth 1 https://github.com/unisamp/RakNet.git temp_samp || \
+            git clone --depth 1 https://github.com/Bartek35/RakNet.git temp_samp
+            
+            rm -rf vendor/RakNet
+            mkdir -p vendor/RakNet
             cp -r temp_samp/* vendor/RakNet/
+            rm -rf temp_samp
           fi
-          rm -rf temp_samp
 
       - name: Install Android NDK
         run: |
