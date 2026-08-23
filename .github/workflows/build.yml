@@ -16,26 +16,38 @@ jobs:
         uses: actions/checkout@v4
 
       # ============================================
-      # ⬇️ الحل: إنشاء symlink لحل مشكلة Case Sensitivity
+      # ⬇️ الحل الشامل: إصلاح جميع مشاكل Case Sensitivity
       # ============================================
-      - name: Fix RakNet Case Sensitivity
+      - name: Fix All Case Sensitivity Issues
         run: |
-          if [ -d "vendor/raknet" ] && [ ! -d "vendor/RakNet" ]; then
+          echo "=== Fixing vendor/RakNet ==="
+          if [ -d "vendor/raknet" ] && [ ! -e "vendor/RakNet" ]; then
             ln -s raknet vendor/RakNet
-            echo "Created symlink: vendor/RakNet -> vendor/raknet"
+            echo "Created: vendor/RakNet -> vendor/raknet"
           fi
+
+          echo "=== Creating CamelCase symlinks for all .h files ==="
+          find . -name "*.h" -type f | while read f; do
+            dir=$(dirname "$f")
+            base=$(basename "$f")
+            # Convert snake_case to CamelCase (e.g., checkfilehash.h -> CheckFileHash.h)
+            camel=$(echo "$base" | sed -r 's/(^|_)([a-z])/\U\2/g')
+            if [ "$base" != "$camel" ] && [ ! -e "$dir/$camel" ]; then
+              (cd "$dir" && ln -s "$base" "$camel")
+              echo "Created: $dir/$camel -> $base"
+            fi
+          done
+          
+          echo "=== Done ==="
           ls -la vendor/
+          ls -la *.h 2>/dev/null || true
 
       - name: Setup SAMP RakNet Engine
         run: |
-          # ضع هنا أي أوامر إعداد RakNet Engine التي تستخدمها
           echo "Setup SAMP RakNet Engine..."
 
       - name: Install Android NDK
         run: |
-          # إذا كنت تستخدم NDK محدد
-          # sudo apt-get update
-          # sudo apt-get install -y android-ndk
           echo "Installing Android NDK..."
 
       - name: Compile NDK Libraries
