@@ -12,14 +12,10 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Download RakNet Source
+      - name: Clone RakNet Source
         run: |
           rm -rf vendor/RakNet
-          mkdir -p vendor/RakNet
-          curl -L https://github.com/JonasSAMP/SAMP-Mobile/archive/refs/heads/master.zip -o raknet.zip
-          unzip -q raknet.zip
-          cp -r SAMP-Mobile-master/vendor/RakNet/* vendor/RakNet/
-          rm -rf raknet.zip SAMP-Mobile-master
+          git clone --depth 1 https://github.com/facebook/raknet.git vendor/RakNet
 
       - name: Install Android NDK
         run: |
