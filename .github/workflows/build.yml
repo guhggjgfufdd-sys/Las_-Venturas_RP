@@ -106,19 +106,12 @@ jobs:
           name: compiled-so-files
           path: libs/**/*.so
 
-      # ⬇️ شلت الشرط! هسة يشتغل دائماً
+      # ⬇️ استخدم gh CLI بدل action خارجي
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: v${{ github.run_number }}
-          name: SAMP Native Engine Build #${{ github.run_number }}
-          body: |
-            ✅ Build completed successfully!
-            
-            📦 Files included:
-            - `libsamp.so` for armeabi-v7a
-            
-            🔧 Built from commit: ${{ github.sha }}
-          files: SAMP-Native-Engine.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v${{ github.run_number }}" \
+            --title "SAMP Native Engine Build #${{ github.run_number }}" \
+            --notes "✅ Build completed successfully!" \
+            SAMP-Native-Engine.zip
