@@ -20,13 +20,14 @@ jobs:
           python3 << 'EOF'
           import os
           import shutil
+          import re
 
           print("=== 1) Fix vendor/RakNet ===")
           if os.path.isdir("vendor/raknet") and not os.path.exists("vendor/RakNet"):
               shutil.copytree("vendor/raknet", "vendor/RakNet")
               print("✓ Copied vendor/raknet → vendor/RakNet")
 
-          print("=== 2) Fix typo in all .cpp/.h files ===")
+          print("=== 2) Fix typo + Case Sensitivity in all .cpp/.h files ===")
           for root, dirs, files in os.walk("."):
               if "vendor" in root:
                   continue
@@ -36,11 +37,22 @@ jobs:
                       try:
                           with open(path, "r", encoding="utf-8", errors="ignore") as file:
                               content = file.read()
-                          if "str_obfuscator_ns_template" in content:
-                              content = content.replace("str_obfuscator_ns_template", "str_obfuscator_no_template")
-                              with open(path, "w", encoding="utf-8", errors="ignore") as file:
-                                  file.write(content)
-                              print(f"✓ Fixed typo in {path}")
+                          
+                          # Fix typo
+                          content = content.replace("str_obfuscator_ns_template", "str_obfuscator_no_template")
+                          
+                          # Fix Case Sensitivity: #include "Something.h" → #include "something.h"
+                          # This ONLY affects includes WITHOUT paths (no / in the filename)
+                          def lower_include(match):
+                              return '#include "' + match.group(1).lower() + '"'
+                          
+                          content = re.sub(r'#include "([A-Za-z0-9_]+\.h)"', lower_include, content)
+                          content = re.sub(r'#include "([A-Za-z0-9_]+\.hpp)"', lower_include, content)
+                          
+                          with open(path, "w", encoding="utf-8", errors="ignore") as file:
+                              file.write(content)
+                          
+                          print(f"✓ Fixed {path}")
                       except Exception as e:
                           print(f"⚠ Skipped {path}: {e}")
 
@@ -57,13 +69,14 @@ jobs:
                           shutil.copy2(path, dst)
                           print(f"✓ Copied {f} → {lower} in {root}")
 
-          print("=== 4) Verify game/RW ===")
-          if os.path.isdir("game/RW"):
-              for f in os.listdir("game/RW"):
-                  if f.endswith(".h"):
-                      print(f"  Found: game/RW/{f}")
-          else:
-              print("  game/RW not found!")
+          print("=== VERIFY checkfilehash.cpp ===")
+          try:
+              with open("checkfilehash.cpp", "r", encoding="utf-8", errors="ignore") as f:
+                  lines = f.readlines()
+                  for i, line in enumerate(lines[:5], 1):
+                      print(f"  Line {i}: {line.strip()}")
+          except:
+              print("  Could not read checkfilehash.cpp")
 
           print("=== Done ===")
           EOF
