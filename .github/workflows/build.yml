@@ -7,6 +7,9 @@ on:
     branches: [ master, main ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -87,9 +90,6 @@ jobs:
             APP_BUILD_SCRIPT=./Android.mk \
             NDK_APPLICATION_MK=./Application.mk
 
-      # ============================================
-      # ⬇️ تجهيز الملفات للرفع
-      # ============================================
       - name: Prepare Release Files
         run: |
           mkdir -p release
@@ -100,21 +100,14 @@ jobs:
           cd ..
           ls -la SAMP-Native-Engine.zip
 
-      # ============================================
-      # ⬇️ رفع الـ Artifact (يظهر في Actions)
-      # ============================================
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: compiled-so-files
-          path: |
-            libs/**/*.so
+          path: libs/**/*.so
 
-      # ============================================
-      # ⬇️ رفع تلقائي إلى GitHub Releases
-      # ============================================
+      # ⬇️ شلت الشرط! هسة يشتغل دائماً
       - name: Create GitHub Release
-        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ github.run_number }}
@@ -124,10 +117,8 @@ jobs:
             
             📦 Files included:
             - `libsamp.so` for armeabi-v7a
-            - Compiled object files
             
             🔧 Built from commit: ${{ github.sha }}
-          files: |
-            SAMP-Native-Engine.zip
+          files: SAMP-Native-Engine.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
