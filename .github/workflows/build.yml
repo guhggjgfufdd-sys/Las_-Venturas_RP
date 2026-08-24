@@ -42,20 +42,25 @@ jobs:
             fi
           done
 
-      # ============================================
-      # ⬇️ أهم خطوة: تعديل Android.mk
-      # ============================================
-      - name: Fix Android.mk Include Paths
+      - name: Fix Android.mk with Python
         run: |
-          # Backup original
-          cp Android.mk Android.mk.bak
+          python3 << 'EOF'
+          with open("Android.mk", "r") as f:
+              content = f.read()
+
+          includes = "LOCAL_C_INCLUDES := $(LOCAL_PATH) $(LOCAL_PATH)/game $(LOCAL_PATH)/game/RW $(LOCAL_PATH)/net $(LOCAL_PATH)/util $(LOCAL_PATH)/gui $(LOCAL_PATH)/vendor/RakNet $(LOCAL_PATH)/vendor/RakNet/SAMP $(LOCAL_PATH)/vendor/inih/cpp $(LOCAL_PATH)/vendor/imgui $(LOCAL_PATH)/vendor/hash\n"
           
-          # Add LOCAL_C_INCLUDES before include $(BUILD_SHARED_LIBRARY)
-          sed -i '/include $(BUILD_SHARED_LIBRARY)/i \
-LOCAL_C_INCLUDES := $(LOCAL_PATH) $(LOCAL_PATH)/game $(LOCAL_PATH)/game/RW $(LOCAL_PATH)/net $(LOCAL_PATH)/util $(LOCAL_PATH)/gui $(LOCAL_PATH)/vendor/RakNet $(LOCAL_PATH)/vendor/RakNet/SAMP $(LOCAL_PATH)/vendor/inih/cpp $(LOCAL_PATH)/vendor/imgui $(LOCAL_PATH)/vendor/hash' Android.mk
-          
-          echo "=== Android.mk ==="
-          cat Android.mk
+          if "LOCAL_C_INCLUDES" not in content:
+              content = content.replace("include $(BUILD_SHARED_LIBRARY)", includes + "include $(BUILD_SHARED_LIBRARY)")
+              with open("Android.mk", "w") as f:
+                  f.write(content)
+              print("✓ Added LOCAL_C_INCLUDES to Android.mk")
+          else:
+              print("LOCAL_C_INCLUDES already exists")
+
+          print("=== Android.mk ===")
+          print(content)
+          EOF
 
       - name: Setup SAMP RakNet Engine
         run: |
