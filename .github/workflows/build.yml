@@ -15,9 +15,6 @@ jobs:
       - name: Checkout Current Repo
         uses: actions/checkout@v4
 
-      # ============================================
-      # ⬇️ الحل النهائي بـ Python (أكثر موثوقية)
-      # ============================================
       - name: Fix All Build Issues with Python
         run: |
           python3 << 'EOF'
@@ -36,13 +33,16 @@ jobs:
               for f in files:
                   if f.endswith((".cpp", ".h")):
                       path = os.path.join(root, f)
-                      with open(path, "r") as file:
-                          content = file.read()
-                      if "str_obfuscator_ns_template" in content:
-                          content = content.replace("str_obfuscator_ns_template", "str_obfuscator_no_template")
-                          with open(path, "w") as file:
-                              file.write(content)
-                          print(f"✓ Fixed typo in {path}")
+                      try:
+                          with open(path, "r", encoding="utf-8", errors="ignore") as file:
+                              content = file.read()
+                          if "str_obfuscator_ns_template" in content:
+                              content = content.replace("str_obfuscator_ns_template", "str_obfuscator_no_template")
+                              with open(path, "w", encoding="utf-8", errors="ignore") as file:
+                                  file.write(content)
+                              print(f"✓ Fixed typo in {path}")
+                      except Exception as e:
+                          print(f"⚠ Skipped {path}: {e}")
 
           print("=== 3) Copy ALL .h/.hpp with lowercase names ===")
           for root, dirs, files in os.walk("."):
@@ -71,14 +71,14 @@ jobs:
       - name: Fix Android.mk with Python
         run: |
           python3 << 'EOF'
-          with open("Android.mk", "r") as f:
+          with open("Android.mk", "r", encoding="utf-8", errors="ignore") as f:
               content = f.read()
 
           includes = "LOCAL_C_INCLUDES := $(LOCAL_PATH) $(LOCAL_PATH)/game $(LOCAL_PATH)/game/RW $(LOCAL_PATH)/net $(LOCAL_PATH)/util $(LOCAL_PATH)/gui $(LOCAL_PATH)/vendor/RakNet $(LOCAL_PATH)/vendor/RakNet/SAMP $(LOCAL_PATH)/vendor/inih/cpp $(LOCAL_PATH)/vendor/imgui $(LOCAL_PATH)/vendor/hash\n"
           
           if "LOCAL_C_INCLUDES" not in content:
               content = content.replace("include $(BUILD_SHARED_LIBRARY)", includes + "include $(BUILD_SHARED_LIBRARY)")
-              with open("Android.mk", "w") as f:
+              with open("Android.mk", "w", encoding="utf-8") as f:
                   f.write(content)
               print("✓ Added LOCAL_C_INCLUDES")
           else:
