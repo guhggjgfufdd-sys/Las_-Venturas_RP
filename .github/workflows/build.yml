@@ -30,17 +30,18 @@ jobs:
           done
           echo "✓ Fixed typo"
 
-          echo "=== 3) Copy ALL .h and .hpp with lowercase names ==="
-          find . \( -name "*.h" -o -name "*.hpp" \) -type f | while read f; do
-            if echo "$f" | grep -q "/vendor/"; then continue; fi
-            dir=$(dirname "$f")
-            base=$(basename "$f")
-            lower=$(echo "$base" | tr '[:upper:]' '[:lower:]')
-            if [ "$base" != "$lower" ]; then
-              cp "$f" "$dir/$lower"
-              echo "✓ Copied $base → $lower in $dir"
-            fi
+          echo "=== 3) Fix ALL #include cases in .cpp files ==="
+          find . -name "*.cpp" | while read f; do
+            if echo "$f" | grep -q "vendor/"; then continue; fi
+            # Convert local includes: "Something.h" → "something.h"
+            # This ONLY affects includes WITHOUT paths (no / in the filename)
+            sed -i 's/#include "\([A-Za-z0-9_]*\.h\)"/#include "\L\1"/g' "$f"
+            sed -i 's/#include "\([A-Za-z0-9_]*\.hpp\)"/#include "\L\1"/g' "$f"
           done
+          echo "✓ Fixed all local #include cases"
+
+          echo "=== VERIFY checkfilehash.cpp ==="
+          grep '#include' checkfilehash.cpp || true
 
       - name: Fix Android.mk with Python
         run: |
@@ -54,12 +55,9 @@ jobs:
               content = content.replace("include $(BUILD_SHARED_LIBRARY)", includes + "include $(BUILD_SHARED_LIBRARY)")
               with open("Android.mk", "w") as f:
                   f.write(content)
-              print("✓ Added LOCAL_C_INCLUDES to Android.mk")
+              print("✓ Added LOCAL_C_INCLUDES")
           else:
               print("LOCAL_C_INCLUDES already exists")
-
-          print("=== Android.mk ===")
-          print(content)
           EOF
 
       - name: Setup SAMP RakNet Engine
