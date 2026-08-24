@@ -27,7 +27,7 @@ jobs:
               shutil.copytree("vendor/raknet", "vendor/RakNet")
               print("✓ Copied vendor/raknet → vendor/RakNet")
 
-          print("=== 2) Fix typo + Case Sensitivity in all .cpp/.h files ===")
+          print("=== 2) Fix typo + Case Sensitivity ===")
           for root, dirs, files in os.walk("."):
               if "vendor" in root:
                   continue
@@ -37,22 +37,13 @@ jobs:
                       try:
                           with open(path, "r", encoding="utf-8", errors="ignore") as file:
                               content = file.read()
-                          
-                          # Fix typo
                           content = content.replace("str_obfuscator_ns_template", "str_obfuscator_no_template")
-                          
-                          # Fix Case Sensitivity: #include "Something.h" → #include "something.h"
-                          # This ONLY affects includes WITHOUT paths (no / in the filename)
                           def lower_include(match):
                               return '#include "' + match.group(1).lower() + '"'
-                          
                           content = re.sub(r'#include "([A-Za-z0-9_]+\.h)"', lower_include, content)
                           content = re.sub(r'#include "([A-Za-z0-9_]+\.hpp)"', lower_include, content)
-                          
                           with open(path, "w", encoding="utf-8", errors="ignore") as file:
                               file.write(content)
-                          
-                          print(f"✓ Fixed {path}")
                       except Exception as e:
                           print(f"⚠ Skipped {path}: {e}")
 
@@ -67,16 +58,6 @@ jobs:
                       if f != lower:
                           dst = os.path.join(root, lower)
                           shutil.copy2(path, dst)
-                          print(f"✓ Copied {f} → {lower} in {root}")
-
-          print("=== VERIFY checkfilehash.cpp ===")
-          try:
-              with open("checkfilehash.cpp", "r", encoding="utf-8", errors="ignore") as f:
-                  lines = f.readlines()
-                  for i, line in enumerate(lines[:5], 1):
-                      print(f"  Line {i}: {line.strip()}")
-          except:
-              print("  Could not read checkfilehash.cpp")
 
           print("=== Done ===")
           EOF
@@ -86,25 +67,18 @@ jobs:
           python3 << 'EOF'
           with open("Android.mk", "r", encoding="utf-8", errors="ignore") as f:
               content = f.read()
-
           includes = "LOCAL_C_INCLUDES := $(LOCAL_PATH) $(LOCAL_PATH)/game $(LOCAL_PATH)/game/RW $(LOCAL_PATH)/net $(LOCAL_PATH)/util $(LOCAL_PATH)/gui $(LOCAL_PATH)/vendor/RakNet $(LOCAL_PATH)/vendor/RakNet/SAMP $(LOCAL_PATH)/vendor/inih/cpp $(LOCAL_PATH)/vendor/imgui $(LOCAL_PATH)/vendor/hash\n"
-          
           if "LOCAL_C_INCLUDES" not in content:
               content = content.replace("include $(BUILD_SHARED_LIBRARY)", includes + "include $(BUILD_SHARED_LIBRARY)")
               with open("Android.mk", "w", encoding="utf-8") as f:
                   f.write(content)
-              print("✓ Added LOCAL_C_INCLUDES")
-          else:
-              print("LOCAL_C_INCLUDES already exists")
           EOF
 
       - name: Setup SAMP RakNet Engine
-        run: |
-          echo "Setup SAMP RakNet Engine..."
+        run: echo "Setup SAMP RakNet Engine..."
 
       - name: Install Android NDK
-        run: |
-          echo "Installing Android NDK..."
+        run: echo "Installing Android NDK..."
 
       - name: Compile NDK Libraries
         run: |
@@ -113,11 +87,47 @@ jobs:
             APP_BUILD_SCRIPT=./Android.mk \
             NDK_APPLICATION_MK=./Application.mk
 
-      - name: Upload Compiled .so Files
-        if: success()
+      # ============================================
+      # ⬇️ تجهيز الملفات للرفع
+      # ============================================
+      - name: Prepare Release Files
+        run: |
+          mkdir -p release
+          cp -r libs/* release/ 2>/dev/null || true
+          cp -r obj/* release/ 2>/dev/null || true
+          cd release
+          zip -r ../SAMP-Native-Engine.zip .
+          cd ..
+          ls -la SAMP-Native-Engine.zip
+
+      # ============================================
+      # ⬇️ رفع الـ Artifact (يظهر في Actions)
+      # ============================================
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: compiled-so-files
           path: |
             libs/**/*.so
-            obj/**/*.so
+
+      # ============================================
+      # ⬇️ رفع تلقائي إلى GitHub Releases
+      # ============================================
+      - name: Create GitHub Release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ github.run_number }}
+          name: SAMP Native Engine Build #${{ github.run_number }}
+          body: |
+            ✅ Build completed successfully!
+            
+            📦 Files included:
+            - `libsamp.so` for armeabi-v7a
+            - Compiled object files
+            
+            🔧 Built from commit: ${{ github.sha }}
+          files: |
+            SAMP-Native-Engine.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
