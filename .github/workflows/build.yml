@@ -15,9 +15,6 @@ jobs:
       - name: Checkout Current Repo
         uses: actions/checkout@v4
 
-      # ============================================
-      # ⬇️ الحل النهائي: Copy بدل sed
-      # ============================================
       - name: Fix All Build Issues
         run: |
           echo "=== 1) Fix vendor/RakNet ==="
@@ -26,28 +23,39 @@ jobs:
             echo "✓ Copied vendor/raknet → vendor/RakNet"
           fi
 
-          echo "=== 2) Fix typo: str_obfuscator_ns_template → str_obfuscator_no_template ==="
+          echo "=== 2) Fix typo ==="
           find . -name "*.cpp" -o -name "*.h" | while read f; do
             if echo "$f" | grep -q "vendor/"; then continue; fi
             sed -i 's/str_obfuscator_ns_template/str_obfuscator_no_template/g' "$f"
           done
           echo "✓ Fixed typo"
 
-          echo "=== 3) Copy ALL .h and .hpp files with lowercase names ==="
+          echo "=== 3) Copy ALL .h and .hpp with lowercase names ==="
           find . \( -name "*.h" -o -name "*.hpp" \) -type f | while read f; do
-            # Skip vendor folder
             if echo "$f" | grep -q "/vendor/"; then continue; fi
             dir=$(dirname "$f")
             base=$(basename "$f")
             lower=$(echo "$base" | tr '[:upper:]' '[:lower:]')
             if [ "$base" != "$lower" ]; then
               cp "$f" "$dir/$lower"
-              echo "✓ Copied $f → $dir/$lower"
+              echo "✓ Copied $base → $lower in $dir"
             fi
           done
 
-          echo "=== VERIFY game/RW ==="
-          ls -la game/RW/*.h 2>/dev/null || true
+      # ============================================
+      # ⬇️ أهم خطوة: تعديل Android.mk
+      # ============================================
+      - name: Fix Android.mk Include Paths
+        run: |
+          # Backup original
+          cp Android.mk Android.mk.bak
+          
+          # Add LOCAL_C_INCLUDES before include $(BUILD_SHARED_LIBRARY)
+          sed -i '/include $(BUILD_SHARED_LIBRARY)/i \
+LOCAL_C_INCLUDES := $(LOCAL_PATH) $(LOCAL_PATH)/game $(LOCAL_PATH)/game/RW $(LOCAL_PATH)/net $(LOCAL_PATH)/util $(LOCAL_PATH)/gui $(LOCAL_PATH)/vendor/RakNet $(LOCAL_PATH)/vendor/RakNet/SAMP $(LOCAL_PATH)/vendor/inih/cpp $(LOCAL_PATH)/vendor/imgui $(LOCAL_PATH)/vendor/hash' Android.mk
+          
+          echo "=== Android.mk ==="
+          cat Android.mk
 
       - name: Setup SAMP RakNet Engine
         run: |
