@@ -15,33 +15,58 @@ jobs:
       - name: Checkout Current Repo
         uses: actions/checkout@v4
 
-      - name: Fix All Build Issues
+      # ============================================
+      # ⬇️ الحل النهائي بـ Python (أكثر موثوقية)
+      # ============================================
+      - name: Fix All Build Issues with Python
         run: |
-          echo "=== 1) Fix vendor/RakNet ==="
-          if [ -d "vendor/raknet" ] && [ ! -d "vendor/RakNet" ]; then
-            cp -r vendor/raknet vendor/RakNet
-            echo "✓ Copied vendor/raknet → vendor/RakNet"
-          fi
+          python3 << 'EOF'
+          import os
+          import shutil
 
-          echo "=== 2) Fix typo ==="
-          find . -name "*.cpp" -o -name "*.h" | while read f; do
-            if echo "$f" | grep -q "vendor/"; then continue; fi
-            sed -i 's/str_obfuscator_ns_template/str_obfuscator_no_template/g' "$f"
-          done
-          echo "✓ Fixed typo"
+          print("=== 1) Fix vendor/RakNet ===")
+          if os.path.isdir("vendor/raknet") and not os.path.exists("vendor/RakNet"):
+              shutil.copytree("vendor/raknet", "vendor/RakNet")
+              print("✓ Copied vendor/raknet → vendor/RakNet")
 
-          echo "=== 3) Fix ALL #include cases in .cpp files ==="
-          find . -name "*.cpp" | while read f; do
-            if echo "$f" | grep -q "vendor/"; then continue; fi
-            # Convert local includes: "Something.h" → "something.h"
-            # This ONLY affects includes WITHOUT paths (no / in the filename)
-            sed -i 's/#include "\([A-Za-z0-9_]*\.h\)"/#include "\L\1"/g' "$f"
-            sed -i 's/#include "\([A-Za-z0-9_]*\.hpp\)"/#include "\L\1"/g' "$f"
-          done
-          echo "✓ Fixed all local #include cases"
+          print("=== 2) Fix typo in all .cpp/.h files ===")
+          for root, dirs, files in os.walk("."):
+              if "vendor" in root:
+                  continue
+              for f in files:
+                  if f.endswith((".cpp", ".h")):
+                      path = os.path.join(root, f)
+                      with open(path, "r") as file:
+                          content = file.read()
+                      if "str_obfuscator_ns_template" in content:
+                          content = content.replace("str_obfuscator_ns_template", "str_obfuscator_no_template")
+                          with open(path, "w") as file:
+                              file.write(content)
+                          print(f"✓ Fixed typo in {path}")
 
-          echo "=== VERIFY checkfilehash.cpp ==="
-          grep '#include' checkfilehash.cpp || true
+          print("=== 3) Copy ALL .h/.hpp with lowercase names ===")
+          for root, dirs, files in os.walk("."):
+              if "vendor" in root:
+                  continue
+              for f in files:
+                  if f.endswith((".h", ".hpp")):
+                      path = os.path.join(root, f)
+                      lower = f.lower()
+                      if f != lower:
+                          dst = os.path.join(root, lower)
+                          shutil.copy2(path, dst)
+                          print(f"✓ Copied {f} → {lower} in {root}")
+
+          print("=== 4) Verify game/RW ===")
+          if os.path.isdir("game/RW"):
+              for f in os.listdir("game/RW"):
+                  if f.endswith(".h"):
+                      print(f"  Found: game/RW/{f}")
+          else:
+              print("  game/RW not found!")
+
+          print("=== Done ===")
+          EOF
 
       - name: Fix Android.mk with Python
         run: |
